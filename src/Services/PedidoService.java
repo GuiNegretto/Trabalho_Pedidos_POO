@@ -137,9 +137,6 @@ public class PedidoService {
 
         if (novoPedido.getItens().isEmpty()) {
             System.out.println("Pedido cancelado: nenhum item adicionado.");
-            // Se o pedido for cancelado, talvez você queira reverter o decremento do estoque
-            // Isso dependerá da lógica de negócio. Para simplicidade, assumimos que se itens foram
-            // adicionados, o pedido será salvo.
             return;
         }
 

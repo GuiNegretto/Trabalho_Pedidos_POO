@@ -327,7 +327,6 @@ public class EstoqueService {
         if (item != null) {
             item.setQuantidade(item.getQuantidade() + quantidade);
         } else {
-            // Se o item não existir no estoque, adiciona-o (pode ser uma nova entrada no estoque)
             itensEstoque.add(new Estoque(produto, quantidade));
         }
     }

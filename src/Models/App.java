@@ -9,14 +9,13 @@ public class App {
         Scanner scanner = new Scanner(System.in);
 
         // Inicializa os serviços na ordem correta das dependências
-        ProdutoService produtoService = new ProdutoService(); // Não depende de outros serviços no construtor
+        ProdutoService produtoService = new ProdutoService(); 
         EstoqueService estoqueService = new EstoqueService(produtoService); // EstoqueService depende de ProdutoService
 
-        // Resolvendo a dependência de FornecedorService em ProdutoService via setter
         FornecedorService fornecedorService = new FornecedorService(produtoService); // FornecedorService depende de ProdutoService
         produtoService.setFornecedorService(fornecedorService); // Injeta FornecedorService em ProdutoService
 
-        EnderecoService enderecoService = new EnderecoService(); // Novo serviço
+        EnderecoService enderecoService = new EnderecoService();
         ClienteService clienteService = new ClienteService(enderecoService); // ClienteService depende de EnderecoService
         UsuarioService usuarioService = new UsuarioService();
 
