@@ -53,7 +53,7 @@ public class ProdutoService {
             return;
         }
 
-        System.out.print("Insira o preço do Produto: "); // Nova entrada: preço
+        System.out.print("Insira o preço do Produto: ");
         double precoProduto;
         try {
             precoProduto = Double.parseDouble(scanner.nextLine());
@@ -174,10 +174,6 @@ public class ProdutoService {
             System.out.println("Produto nao encontrado");
             return;
         }
-
-        // Em um sistema real, você também verificaria se este produto está em algum pedido
-        // ou se ele existe no estoque antes de permitir a exclusão.
-        // Para simplificar, permitiremos a exclusão sem essa verificação aqui.
 
         System.out.print("Tem certeza que deseja excluir o produto '" + produtoParaExcluir.getNome() + "'? (S/N): ");
         String confirmacao = scanner.nextLine();

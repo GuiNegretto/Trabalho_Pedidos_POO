@@ -157,9 +157,6 @@ public class EnderecoService {
             return;
         }
 
-        // Em um sistema mais robusto, você verificaria se há clientes ou fornecedores
-        // vinculados a este endereço antes de permitir a exclusão. Para este exemplo,
-        // permitiremos a exclusão, mesmo que esteja vinculado.
 
         System.out.print("Tem certeza que deseja excluir o endereço '" + enderecoParaExcluir.getRua() + "'? (S/N): ");
         String confirmacao = scanner.nextLine();
