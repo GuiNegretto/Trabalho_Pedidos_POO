@@ -1,6 +1,9 @@
 package Models;
 
-public class Fornecedor {
+import java.io.Serializable;
+
+public class Fornecedor implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     private int id;
     private String nome;

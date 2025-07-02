@@ -1,17 +1,22 @@
 package Models;
 
-public class Produto {
+import java.io.Serializable;
+
+public class Produto implements Serializable {
+    private static final long serialVersionUID = 1L;
     private int id;
     private String nome;
+    private String descricao;
     private Fornecedor fornecedor;
-    private double preco; // NOVA PROPRIEDADE: preço
+    private double preco;
 
     public Produto() {
     }
 
-    public Produto(int id, String nome, Fornecedor fornecedor, double preco) {
+    public Produto(int id, String nome, String descricao, Fornecedor fornecedor, double preco) {
         this.id = id;
         this.nome = nome;
+        this.descricao = descricao;
         this.fornecedor = fornecedor;
         this.preco = preco;
     }
@@ -28,6 +33,14 @@ public class Produto {
         this.nome = nome;
     }
 
+    public String getDescricao() {
+        return descricao;
+    }
+
+    public void setDescricao(String descricao) {
+        this.descricao = descricao;
+    }
+
     public Fornecedor getFornecedor() {
         return fornecedor;
     }
@@ -36,11 +49,11 @@ public class Produto {
         this.fornecedor = fornecedor;
     }
 
-    public double getPreco() { // Novo getter para preço
+    public double getPreco() { // Novo getter para preco
         return preco;
     }
 
-    public void setPreco(double preco) { // Novo setter para preço
+    public void setPreco(double preco) { // Novo setter para preco
         this.preco = preco;
     }
 }

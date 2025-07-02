@@ -2,7 +2,7 @@ package Models;
 
 public class Usuario {
 
-    private boolean admin; // Esta propriedade não está sendo usada atualmente, mas pode ser mantida
+    private boolean admin; // Esta propriedade nao esta sendo usada atualmente, mas pode ser mantida
     private static String loginAdmin = "admin";
     private static String senhaAdmin = "1234";
     private static String loginCliente = "cliente";
@@ -17,8 +17,8 @@ public class Usuario {
         this.admin = admin;
     }
 
-    // Os getters e setters estáticos ainda são úteis se você quiser
-    // a capacidade de mudar as credenciais em tempo de execução
+    // Os getters e setters estaticos ainda sao utile se voce quiser
+    // a capacidade de mudar as credenciais em tempo de execucao
     public static String getLoginAdmin() {
         return loginAdmin;
     }

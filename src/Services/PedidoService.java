@@ -1,12 +1,20 @@
 package Services;
 
+import Models.*;
+import Utils.PedidoStatus;
+import java.io.*;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
-import Models.*;
-import Utils.PedidoStatus;
+
+// Excecao customizada para estoque insuficiente
+class EstoqueInsuficienteException extends Exception {
+    public EstoqueInsuficienteException(String message) {
+        super(message);
+    }
+}
 
 public class PedidoService {
     private List<Pedido> pedidos;
@@ -14,6 +22,7 @@ public class PedidoService {
     private ClienteService clienteService;
     private ProdutoService produtoService;
     private EstoqueService estoqueService;
+    private static final String ARQUIVO_PEDIDOS = "src/Arquivos/pedidos.dat";
 
     public PedidoService(ClienteService clienteService, ProdutoService produtoService, EstoqueService estoqueService) {
         this.pedidos = new ArrayList<>();
@@ -21,6 +30,41 @@ public class PedidoService {
         this.clienteService = clienteService;
         this.produtoService = produtoService;
         this.estoqueService = estoqueService;
+        carregarPedidosDeArquivo();
+        atualizarProximoId();
+    }
+
+    public void salvarPedidosEmArquivo() {
+        try {
+            File pasta = new File("Arquivos");
+            if (!pasta.exists()) pasta.mkdir();
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(ARQUIVO_PEDIDOS));
+            oos.writeObject(pedidos);
+            oos.close();
+        } catch (IOException e) {
+            System.out.println("Erro ao salvar pedidos: " + e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public void carregarPedidosDeArquivo() {
+        File arquivo = new File(ARQUIVO_PEDIDOS);
+        if (!arquivo.exists()) return;
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(ARQUIVO_PEDIDOS));
+            pedidos = (List<Pedido>) ois.readObject();
+            ois.close();
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Erro ao carregar pedidos: " + e.getMessage());
+        }
+    }
+
+    private void atualizarProximoId() {
+        int maiorId = 0;
+        for (Pedido p : pedidos) {
+            if (p.getId() > maiorId) maiorId = p.getId();
+        }
+        proximoId = maiorId + 1;
     }
 
     public int getContadorPedidos() {
@@ -35,12 +79,12 @@ public class PedidoService {
             return;
         }
         clienteService.consultaTodosClientes();
-        System.out.print("Digite o ID do cliente que está realizando o pedido: ");
+        System.out.print("Digite o ID do cliente que esta realizando o pedido: ");
         int idCliente;
         try {
             idCliente = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("ID de cliente inválido. Operacao cancelada.");
+            System.out.println("ID de cliente invalido. Operacao cancelada.");
             return;
         }
 
@@ -52,7 +96,7 @@ public class PedidoService {
 
         LocalDate dataPedido = LocalDate.now();
         LocalDate dataEntrega = null;
-        System.out.print("Digite a data de entrega (AAAA-MM-DD): ");
+        System.out.print("Digite previsao de entrega (AAAA-MM-DD): ");
         String dataEntregaStr = scanner.nextLine();
         try {
             dataEntrega = LocalDate.parse(dataEntregaStr);
@@ -61,7 +105,7 @@ public class PedidoService {
                 return;
             }
         } catch (DateTimeParseException e) {
-            System.out.println("Formato de data inválido. Use AAAA-MM-DD. Operacao cancelada.");
+            System.out.println("Formato de data invalido. Use AAAA-MM-DD. Operacao cancelada.");
             return;
         }
 
@@ -74,13 +118,23 @@ public class PedidoService {
                 System.out.println("Nao ha produtos cadastrados.");
                 break;
             }
-            produtoService.consultaTodosProdutos();
+            // Exibe produtos com a quantidade em estoque
+            List<Produto> produtos = produtoService.getProdutos();
+            System.out.println("Codigo | Nome | PreÃ§o | Estoque");
+            System.out.println("------------------------------------------");
+            for (Produto p : produtos) {
+                Estoque itemEstoque = estoqueService.buscarItemEstoquePorProdutoId(p.getId());
+                int qtdEstoque = (itemEstoque != null) ? itemEstoque.getQuantidade() : 0;
+                System.out.printf("%-6d | %-15s | R$ %-8.2f | %-7d\n",
+                        p.getId(), p.getNome(), p.getPreco(), qtdEstoque);
+            }
+            System.out.println("------------------------------------------");
             System.out.print("Digite o ID do produto para adicionar (0 para finalizar): ");
             int idProduto;
             try {
                 idProduto = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
-                System.out.println("ID de produto inválido. Tente novamente.");
+                System.out.println("ID de produto invalido. Tente novamente.");
                 continue;
             }
 
@@ -106,28 +160,37 @@ public class PedidoService {
             try {
                 quantidade = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
-                System.out.println("Quantidade inválida. Tente novamente.");
+                System.out.println("Quantidade invalida. Tente novamente.");
                 continue;
             }
 
-            if (quantidade <= 0) {
-                System.out.println("Quantidade deve ser maior que zero.");
-                continue;
+            try {
+                if (quantidade > itemEstoque.getQuantidade()) {
+                    throw new EstoqueInsuficienteException("Quantidade em estoque insuficiente. Quantidade disponivel: " + itemEstoque.getQuantidade());
+                }
+                double precoUnitario = produto.getPreco();
+                ItemPedido itemPedido = new ItemPedido(produto, quantidade, precoUnitario);
+                novoPedido.adicionarItem(itemPedido);
+                estoqueService.decrementarQuantidade(produto, quantidade);
+                System.out.println("Item adicionado ao pedido.");
+            } catch (EstoqueInsuficienteException e) {
+                System.out.println(e.getMessage());
+                System.out.print("Deseja adicionar a quantidade maxima disponivel? (S/N): ");
+                String resposta = scanner.nextLine();
+                if (resposta.equalsIgnoreCase("S")) {
+                    int maxDisponivel = itemEstoque.getQuantidade();
+                    if (maxDisponivel > 0) {
+                        double precoUnitario = produto.getPreco();
+                        ItemPedido itemPedido = new ItemPedido(produto, maxDisponivel, precoUnitario);
+                        novoPedido.adicionarItem(itemPedido);
+                        estoqueService.decrementarQuantidade(produto, maxDisponivel);
+                        System.out.println("Item adicionado ao pedido com quantidade maxima disponivel.");
+                    } else {
+                        System.out.println("Nenhuma unidade disponivel.");
+                    }
+                }
             }
 
-            if (quantidade > itemEstoque.getQuantidade()) {
-                System.out.println("Quantidade em estoque insuficiente. Disponível: " + itemEstoque.getQuantidade());
-                continue;
-            }
-
-            // O preço do item no pedido é o preço atual do produto no momento da adição
-            ItemPedido itemPedido = new ItemPedido(produto, quantidade, produto.getPreco());
-            novoPedido.adicionarItem(itemPedido);
-
-            // Decrementa a quantidade do produto no estoque
-            estoqueService.decrementarQuantidade(produto, quantidade);
-
-            System.out.println("Item '" + produto.getNome() + "' adicionado ao pedido.");
             System.out.print("Adicionar mais itens? (S/N): ");
             String continuar = scanner.nextLine();
             if (!continuar.equalsIgnoreCase("S")) {
@@ -140,43 +203,85 @@ public class PedidoService {
             return;
         }
 
+        // Exibe resumo do pedido antes de confirmar
+        System.out.println("\n--- Resumo do Pedido ---");
+        System.out.println("Cliente: " + novoPedido.getCliente().getNome());
+        System.out.println("Data do Pedido: " + novoPedido.getDataPedido());
+        System.out.println("Data de Entrega: " + novoPedido.getDataEntrega());
+        System.out.println("Itens:");
+        System.out.println("Produto | Qtd | PreÃ§o Unit. | Subtotal");
+        for (ItemPedido item : novoPedido.getItens()) {
+            System.out.printf("%s | %d | R$ %.2f | R$ %.2f\n",
+                item.getProduto().getNome(),
+                item.getQuantidade(),
+                item.getPrecoUnitario(),
+                item.getSubtotal());
+        }
+        System.out.printf("Total: R$ %.2f\n", novoPedido.calcularTotal());
+        System.out.printf("ICMS (17%%): R$ %.2f\n", novoPedido.calcularValorIcms(novoPedido.calcularTotal()));
+        System.out.printf("Total com ICMS: R$ %.2f\n", novoPedido.calcularTotalComIcms(novoPedido.calcularTotal()));
+
+        System.out.print("Confirmar pedido? (S/N): ");
+        String confirmacao = scanner.nextLine();
+        if (!confirmacao.equalsIgnoreCase("S")) {
+            // Devolve ao estoque
+            for (ItemPedido item : novoPedido.getItens()) {
+                estoqueService.incrementarQuantidade(item.getProduto(), item.getQuantidade());
+            }
+            System.out.println("Pedido cancelado pelo usuÃ¡rio.");
+            return;
+        }
+
         pedidos.add(novoPedido);
-        System.out.printf("Pedido %d criado com sucesso para o cliente %s. Total: R$ %.2f%n",
-                novoPedido.getId(), novoPedido.getCliente().getNome(), novoPedido.calcularTotal());
+        salvarPedidosEmArquivo();
+        System.out.printf("Pedido %d criado com sucesso para o cliente %s. \n Total sem ICMS: R$ %.2f%n  Valor do ICMS: R$ %.2f \n Total com ICMS: R$ %.2f",
+                novoPedido.getId(), novoPedido.getCliente().getNome(), novoPedido.calcularTotal(), novoPedido.calcularValorIcms(novoPedido.calcularTotal()), novoPedido.calcularTotalComIcms(novoPedido.calcularTotal()));
     }
 
     public void consultaPedido(Scanner scanner) {
-        if (pedidos.isEmpty()) {
-            System.out.println("Nenhum pedido cadastrado.");
-            return;
-        }
-
-        System.out.println("\n--- Consultar Pedido por ---");
-        System.out.println("1 - ID do Pedido");
-        System.out.println("2 - Cliente");
-        System.out.println("3 - Todos os Pedidos");
+        System.out.println("\n--- Consulta de Pedidos ---");
+        System.out.println("1. Consultar por numero do pedido");
+        System.out.println("2. Consultar por intervalo de datas");
         System.out.print("Escolha uma opcao: ");
-        int opcao;
+        int opcao = 0;
         try {
             opcao = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida. Operacao cancelada.");
+            System.out.println("Opcao invalida.");
             return;
         }
-
         switch (opcao) {
             case 1:
                 consultaPedidoPorId(scanner);
                 break;
             case 2:
-                consultarPedidosPorCliente(scanner);
-                break;
-            case 3:
-                consultaTodosPedidos();
+                consultaPedidosPorIntervaloDeDatas(scanner);
                 break;
             default:
                 System.out.println("Opcao invalida.");
-                break;
+        }
+    }
+
+    // Nova funcao para consulta por intervalo de datas
+    private void consultaPedidosPorIntervaloDeDatas(Scanner scanner) {
+        System.out.print("Digite a data inicial (AAAA-MM-DD): ");
+        String dataInicialStr = scanner.nextLine();
+        System.out.print("Digite a data final (AAAA-MM-DD): ");
+        String dataFinalStr = scanner.nextLine();
+        LocalDate dataInicial, dataFinal;
+        try {
+            dataInicial = LocalDate.parse(dataInicialStr);
+            dataFinal = LocalDate.parse(dataFinalStr);
+        } catch (DateTimeParseException e) {
+            System.out.println("Formato de data invalido.");
+            return;
+        }
+        System.out.println("\n--- Pedidos no intervalo ---");
+        for (Pedido pedido : pedidos) {
+            if ((pedido.getDataPedido().isEqual(dataInicial) || pedido.getDataPedido().isAfter(dataInicial)) &&
+                (pedido.getDataPedido().isEqual(dataFinal) || pedido.getDataPedido().isBefore(dataFinal))) {
+                exibirDetalhesPedido(pedido);
+            }
         }
     }
 
@@ -186,19 +291,19 @@ public class PedidoService {
         try {
             idPedido = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("ID de pedido inválido. Operacao cancelada.");
+            System.out.println("ID de pedido invalido. Operacao cancelada.");
             return;
         }
 
         Pedido pedido = buscarPedidoPorId(idPedido);
         if (pedido == null) {
-            System.out.println("Pedido não encontrado.");
+            System.out.println("Pedido nao encontrado.");
             return;
         }
         exibirDetalhesPedido(pedido);
     }
 
-    public void consultarPedidosPorCliente(Scanner scanner) { // Público para ser chamado pelo menu Cliente
+    public void consultarPedidosPorCliente(Scanner scanner) { // Publico para ser chamado pelo menu Cliente
         if (clienteService.getContadorClientes() == 0) {
             System.out.println("Nao ha clientes cadastrados.");
             return;
@@ -209,7 +314,7 @@ public class PedidoService {
         try {
             idCliente = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("ID de cliente inválido. Operacao cancelada.");
+            System.out.println("ID de cliente invalido. Operacao cancelada.");
             return;
         }
 
@@ -262,7 +367,7 @@ public class PedidoService {
         try {
             idPedido = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("ID de pedido inválido. Operacao cancelada.");
+            System.out.println("ID de pedido invalido. Operacao cancelada.");
             return;
         }
 
@@ -283,7 +388,7 @@ public class PedidoService {
         try {
             PedidoStatus novaSituacao = PedidoStatus.valueOf(novaSituacaoStr);
 
-            // Lógica para lidar com alterações de estoque ao mudar status
+            // Logica para lidar com alteracoes de estoque ao mudar status
             if (pedido.getSituacao() == PedidoStatus.NOVO && novaSituacao == PedidoStatus.CANCELADO) {
                 // Se o pedido era NOVO e foi CANCELADO, retorna itens para o estoque
                 for (ItemPedido item : pedido.getItens()) {
@@ -291,16 +396,19 @@ public class PedidoService {
                 }
                 System.out.println("Itens do pedido " + pedido.getId() + " retornados ao estoque devido ao cancelamento.");
             } else if (pedido.getSituacao() == PedidoStatus.CANCELADO && novaSituacao == PedidoStatus.NOVO) {
-                 System.out.println("Não é possível reverter um pedido CANCELADO para NOVO sem verificar estoque manualmente.");
-                 // Em um sistema real, você faria uma verificação de estoque aqui para ver se é possível reverter
+                 System.out.println("Nao e possivel reverter um pedido CANCELADO para NOVO sem verificar estoque manualmente.");
+                 // Em um sistema real, voce faria uma verificacao de estoque aqui para ver se e possivel reverter
                  return;
             }
 
-
             pedido.setSituacao(novaSituacao);
+            if (novaSituacao == PedidoStatus.ENTREGUE) {
+                pedido.setDataEntregaReal(LocalDate.now());
+            }
+            salvarPedidosEmArquivo();
             System.out.println("Situacao do pedido " + pedido.getId() + " atualizada para: " + novaSituacao);
         } catch (IllegalArgumentException e) {
-            System.out.println("Situacao inválida. Por favor, escolha uma das opções listadas.");
+            System.out.println("Situacao invalida. Por favor, escolha uma das opcoes listadas.");
         }
     }
 
@@ -309,13 +417,16 @@ public class PedidoService {
         System.out.println("ID Pedido: " + pedido.getId());
         System.out.println("Cliente: " + pedido.getCliente().getNome() + " (ID: " + pedido.getCliente().getId() + ")");
         System.out.println("Data do Pedido: " + pedido.getDataPedido());
-        System.out.println("Data de Entrega: " + pedido.getDataEntrega());
+        System.out.println("Data de Previsao de Entrega: " + pedido.getDataEntrega());
+        if (pedido.getSituacao() == Utils.PedidoStatus.ENTREGUE && pedido.getDataEntregaReal() != null) {
+            System.out.println("Data de Entrega: " + pedido.getDataEntregaReal());
+        }
         System.out.println("Situacao: " + pedido.getSituacao());
         System.out.println("Itens do Pedido:");
         if (pedido.getItens().isEmpty()) {
             System.out.println("  Nenhum item neste pedido.");
         } else {
-            System.out.println("  Produto (ID) | Qtd | Preço Unit. | Subtotal");
+            System.out.println("  Produto (ID) | Qtd | Preco Unit. | Subtotal");
             System.out.println("  ----------------------------------------------");
             for (ItemPedido item : pedido.getItens()) {
                 System.out.printf("  %-15s | %-3d | R$ %-8.2f | R$ %.2f%n",
@@ -325,7 +436,12 @@ public class PedidoService {
                         item.getSubtotal());
             }
             System.out.println("  ----------------------------------------------");
-            System.out.printf("  Total do Pedido: R$ %.2f%n", pedido.calcularTotal());
+            double total = pedido.calcularTotal();
+            double valorIcms = pedido.calcularValorIcms(total);
+            double totalComIcms = pedido.calcularTotalComIcms(total);
+            System.out.printf("  Total do Pedido (sem ICMS): R$ %.2f%n", total);
+            System.out.printf("  ICMS (17%%): R$ %.2f%n", valorIcms);
+            System.out.printf("  Total do Pedido (com ICMS): R$ %.2f%n", totalComIcms);
         }
     }
 

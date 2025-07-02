@@ -1,35 +1,75 @@
 package Services;
+import Models.Endereco;
+import Models.Fornecedor;
+import Models.Produto;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
-import Models.Fornecedor;
-import Models.Produto;
-import Services.ProdutoService;
-import Models.Endereco;
+
+import java.io.*;
 
 public class FornecedorService {
 
     private List<Fornecedor> fornecedores;
+
+    List<Fornecedor> getFornecedores() {
+        return fornecedores;
+    }
     private int proximoId;
     private ProdutoService produtoService;
     private EnderecoService enderecoService;
+    private static final String ARQUIVO_FORNECEDORES = "src/Arquivos/fornecedores.dat";
 
-    public FornecedorService(ProdutoService produtoService) {
+    public FornecedorService(ProdutoService produtoService, EnderecoService enderecoService) {
         this.fornecedores = new ArrayList<>();
         this.proximoId = 1;
         this.produtoService = produtoService;
+        this.enderecoService = enderecoService;
+        carregarFornecedoresDeArquivo();
+        atualizarProximoId();
     }
 
-    public void setEnderecoService(EnderecoService enderecoService) {
-        this.enderecoService = enderecoService;
+    public void salvarFornecedoresEmArquivo() {
+        try {
+            File pasta = new File("Arquivos");
+            if (!pasta.exists()) pasta.mkdir();
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(ARQUIVO_FORNECEDORES));
+            oos.writeObject(fornecedores);
+            oos.close();
+        } catch (IOException e) {
+            System.out.println("Erro ao salvar fornecedores: " + e.getMessage());
+        }
     }
+
+    @SuppressWarnings("unchecked")
+    public void carregarFornecedoresDeArquivo() {
+        File arquivo = new File(ARQUIVO_FORNECEDORES);
+        if (!arquivo.exists()) return;
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(ARQUIVO_FORNECEDORES));
+            fornecedores = (List<Fornecedor>) ois.readObject();
+            ois.close();
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Erro ao carregar fornecedores: " + e.getMessage());
+        }
+    }
+
+    private void atualizarProximoId() {
+        int maiorId = 0;
+        for (Fornecedor f : fornecedores) {
+            if (f.getId() > maiorId) maiorId = f.getId();
+        }
+        proximoId = maiorId + 1;
+    }
+
+
 
     public int getContadorFornecedores() {
         return fornecedores.size();
     }
 
     public void inserirFornecedor(Scanner scanner) {
-        System.out.println("\n--- Inserção de Fornecedor ---");
+        System.out.println("\n--- Insercao de Fornecedor ---");
         System.out.print("Insira o nome do Fornecedor: ");
         String nome = scanner.nextLine();
 
@@ -49,30 +89,30 @@ public class FornecedorService {
 
         Endereco enderecoFornecedor = null;
         if (enderecoService != null && enderecoService.getContadorEnderecos() > 0) {
-            System.out.print("Deseja vincular um endereço existente? (S/N): ");
+            System.out.print("Deseja vincular um endereco existente? (S/N): ");
             String vincularEndereco = scanner.nextLine();
             if (vincularEndereco.equalsIgnoreCase("S")) {
                 enderecoService.consultaTodosEnderecos();
-                System.out.print("Digite o ID do endereço a vincular: ");
+                System.out.print("Digite o ID do endereco a vincular: ");
                 int idEndereco;
                 try {
                     idEndereco = Integer.parseInt(scanner.nextLine());
                     enderecoFornecedor = enderecoService.buscarEnderecoPorId(idEndereco);
                     if (enderecoFornecedor == null) {
-                        System.out.println("Endereço não encontrado. Fornecedor será cadastrado sem endereço vinculado.");
+                        System.out.println("Endereco nao encontrado. Fornecedor sera cadastrado sem endereco vinculado.");
                     }
                 } catch (NumberFormatException e) {
-                    System.out.println("ID de endereço inválido. Fornecedor será cadastrado sem endereço vinculado.");
+                    System.out.println("ID de endereco invalido. Fornecedor sera cadastrado sem endereco vinculado.");
                 }
             }
         } else {
-            System.out.println("Não há endereços cadastrados para vincular.");
+            System.out.println("Nao ha enderecos cadastrados para vincular.");
         }
 
         // Construtor atualizado
         Fornecedor novoFornecedor = new Fornecedor(proximoId++, nome, cnpj, telefone, email, enderecoFornecedor);
         fornecedores.add(novoFornecedor);
-
+        salvarFornecedoresEmArquivo();
         System.out.println("Fornecedor inserido com sucesso, ID: " + novoFornecedor.getId());
     }
 
@@ -89,7 +129,7 @@ public class FornecedorService {
         try {
             id = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o ID. Operacao cancelada.");
+            System.out.println("Entrada invalida para o ID. Operacao cancelada.");
             return;
         }
 
@@ -129,36 +169,37 @@ public class FornecedorService {
             fornecedor.setEmail(novoEmail);
         }
 
-        System.out.print("Deseja alterar o endereço vinculado? (S/N): ");
+        System.out.print("Deseja alterar o endereco vinculado? (S/N): ");
         String alterarEndereco = scanner.nextLine();
         if (alterarEndereco.equalsIgnoreCase("S")) {
             if (enderecoService != null) {
                 enderecoService.consultaTodosEnderecos();
-                System.out.print("Digite o ID do novo endereço (0 para remover): ");
+                System.out.print("Digite o ID do novo endereco (0 para remover): ");
                 int idEndereco;
                 try {
                     idEndereco = Integer.parseInt(scanner.nextLine());
                     if (idEndereco == 0) {
                         fornecedor.setEndereco(null);
-                        System.out.println("Endereço removido do fornecedor.");
+                        System.out.println("Endereco removido do fornecedor.");
                     } else {
                         Endereco novoEndereco = enderecoService.buscarEnderecoPorId(idEndereco);
                         if (novoEndereco == null) {
-                            System.out.println("Endereço não encontrado. Mantendo o endereço atual.");
+                            System.out.println("Endereco nao encontrado. Mantendo o endereco atual.");
                         } else {
                             fornecedor.setEndereco(novoEndereco);
-                            System.out.println("Endereço atualizado com sucesso.");
+                            System.out.println("Endereco atualizado com sucesso.");
                         }
                     }
                 } catch (NumberFormatException e) {
-                    System.out.println("ID de endereço inválido. Mantendo o endereço atual.");
+                    System.out.println("ID de endereco invalido. Mantendo o endereco atual.");
                 }
             } else {
-                System.out.println("Serviço de endereços não disponível.");
+                System.out.println("Servico de enderecos nao disponivel.");
             }
         }
 
         System.out.println("Fornecedor atualizado com sucesso");
+        salvarFornecedoresEmArquivo();
     }
 
     public void excluirFornecedor(Scanner scanner) {
@@ -174,7 +215,7 @@ public class FornecedorService {
         try {
             id = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o código. Operacao cancelada.");
+            System.out.println("Entrada invalida para o codigo. Operacao cancelada.");
             return;
         }
 
@@ -187,7 +228,7 @@ public class FornecedorService {
 
         List<Produto> produtosVinculados = produtoService.buscarProdutosPorFornecedor(fornecedorParaExcluir);
         if (!produtosVinculados.isEmpty()) {
-            System.out.println("\nATENCAO: Este fornecedor nao pode ser excluído.");
+            System.out.println("\nATENCAO: Este fornecedor nao pode ser excluido.");
             System.out.println("Ele possui os seguintes produtos vinculados:");
             System.out.println("-------------------------------------");
             System.out.println("ID Produto | Nome Produto");
@@ -205,6 +246,7 @@ public class FornecedorService {
 
         if (confirmacao.equalsIgnoreCase("S")) {
             fornecedores.remove(fornecedorParaExcluir);
+            salvarFornecedoresEmArquivo();
             System.out.println("Fornecedor excluido com sucesso.");
         } else {
             System.out.println("Operacao cancelada.");
@@ -219,14 +261,14 @@ public class FornecedorService {
 
         System.out.println("\n--- Consultar Fornecedor por ---");
         System.out.println("1 - Nome ");
-        System.out.println("2 - Código");
+        System.out.println("2 - Codigo");
         System.out.println("3 - Todos");
         System.out.print("Escolha uma opcao: ");
         int opcao;
         try {
             opcao = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida. Operacao cancelada.");
+            System.out.println("Entrada invalida. Operacao cancelada.");
             return;
         }
 
@@ -251,7 +293,7 @@ public class FornecedorService {
         String nomeFornecedor = scanner.nextLine();
 
         System.out.println("\n--- Lista de Fornecedores ---");
-        System.out.println("Código | Nome | CNPJ | Telefone | Email | Endereço");
+        System.out.println("Codigo | Nome | CNPJ | Telefone | Email | Endereco");
         System.out.println("--------------------------------------------------------------------------------------------------");
 
         boolean encontrou = false;
@@ -274,17 +316,17 @@ public class FornecedorService {
     }
 
     private void consultaFornecedorPorCodigo(Scanner scanner) {
-        System.out.print("Digite o Código do Fornecedor: ");
+        System.out.print("Digite o Codigo do Fornecedor: ");
         int codigoFornecedor;
         try {
             codigoFornecedor = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o código. Operacao cancelada.");
+            System.out.println("Entrada invalida para o codigo. Operacao cancelada.");
             return;
         }
 
         System.out.println("\n--- Lista de Fornecedores ---");
-        System.out.println("Código | Nome | CNPJ | Telefone | Email | Endereço");
+        System.out.println("Codigo | Nome | CNPJ | Telefone | Email | Endereco");
         System.out.println("--------------------------------------------------------------------------------------------------");
 
         boolean encontrou = false;
@@ -313,7 +355,7 @@ public class FornecedorService {
         }
 
         System.out.println("\n--- Lista de Fornecedores ---");
-        System.out.println("Código | Nome | CNPJ | Telefone | Email | Endereço");
+        System.out.println("Codigo | Nome | CNPJ | Telefone | Email | Endereco");
         System.out.println("--------------------------------------------------------------------------------------------------");
 
         for (Fornecedor f : fornecedores) {

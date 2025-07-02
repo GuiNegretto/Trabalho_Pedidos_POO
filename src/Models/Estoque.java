@@ -1,11 +1,13 @@
 package Models;
 
-public class Estoque {
+import java.io.Serializable;
+
+public class Estoque implements Serializable {
 
     private Produto produto; // Depende da classe Produto
     private int quantidade;
 
-    // Removemos o Scanner estático e os arrays estáticos
+    // Removemos o Scanner estatico e os arrays estaticos
 
     public Produto getProduto() {
         return produto;

@@ -1,20 +1,67 @@
 package Services;
 
+import Models.Estoque;
+import Models.Fornecedor;
+import Models.Produto;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
-import Models.Produto;
-import Models.Fornecedor;
 
 public class ProdutoService {
 
     private List<Produto> produtos;
+
+    public List<Produto> getProdutos() {
+        return produtos;
+    }
     private int proximoId;
     private FornecedorService fornecedorService; // Injetado via setter
+    private EstoqueService estoqueService; // Injetado via setter
+    private static final String ARQUIVO_PRODUTOS = "src/Arquivos/produtos.dat";
 
     public ProdutoService() { // Construtor sem FornecedorService
         this.produtos = new ArrayList<>();
         this.proximoId = 1;
+        carregarProdutosDeArquivo();
+        atualizarProximoId();
+    }
+
+    public void setEstoqueService(EstoqueService estoqueService) {
+        this.estoqueService = estoqueService;
+    }
+
+    public void salvarProdutosEmArquivo() {
+        try {
+            File pasta = new File("Arquivos");
+            if (!pasta.exists()) pasta.mkdir();
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(ARQUIVO_PRODUTOS));
+            oos.writeObject(produtos);
+            oos.close();
+        } catch (IOException e) {
+            System.out.println("Erro ao salvar produtos: " + e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public void carregarProdutosDeArquivo() {
+        File arquivo = new File(ARQUIVO_PRODUTOS);
+        if (!arquivo.exists()) return;
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(ARQUIVO_PRODUTOS));
+            produtos = (List<Produto>) ois.readObject();
+            ois.close();
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Erro ao carregar produtos: " + e.getMessage());
+        }
+    }
+
+    private void atualizarProximoId() {
+        int maiorId = 0;
+        for (Produto p : produtos) {
+            if (p.getId() > maiorId) maiorId = p.getId();
+        }
+        proximoId = maiorId + 1;
     }
 
     public void setFornecedorService(FornecedorService fornecedorService) {
@@ -26,9 +73,11 @@ public class ProdutoService {
     }
 
     public void inserirProduto(Scanner scanner) {
-        System.out.println("\n--- Inserção de Produto ---");
+        System.out.println("\n--- Insercao de Produto ---");
         System.out.print("Insira o nome do Produto: ");
         String nomeProduto = scanner.nextLine();
+        System.out.print("Insira a descricao do Produto: ");
+        String descricaoProduto = scanner.nextLine();
 
         if (fornecedorService == null || fornecedorService.getContadorFornecedores() == 0) {
             System.out.println("Nao ha fornecedores cadastrados. Cadastre um fornecedor primeiro.");
@@ -42,7 +91,7 @@ public class ProdutoService {
         try {
             codigoFornecedor = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o código do fornecedor. Operacao cancelada.");
+            System.out.println("Entrada invalida para o codigo do fornecedor. Operacao cancelada.");
             return;
         }
 
@@ -53,23 +102,23 @@ public class ProdutoService {
             return;
         }
 
-        System.out.print("Insira o preço do Produto: ");
+        System.out.print("Insira o preco do Produto ( use '.' para decimais): ");
         double precoProduto;
         try {
             precoProduto = Double.parseDouble(scanner.nextLine());
             if (precoProduto < 0) {
-                System.out.println("Preço não pode ser negativo. Operacao cancelada.");
+                System.out.println("Preco nao pode ser negativo. Operacao cancelada.");
                 return;
             }
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o preço. Operacao cancelada.");
+            System.out.println("Entrada invalida para o preco. Operacao cancelada.");
             return;
         }
 
 
-        Produto novoProduto = new Produto(proximoId++, nomeProduto, fornecedorEncontrado, precoProduto);
+        Produto novoProduto = new Produto(proximoId++, nomeProduto, descricaoProduto, fornecedorEncontrado, precoProduto);
         produtos.add(novoProduto);
-
+        salvarProdutosEmArquivo();
         System.out.println("Produto inserido com sucesso ID: " + novoProduto.getId());
     }
 
@@ -86,7 +135,7 @@ public class ProdutoService {
         try {
             id = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o ID. Operacao cancelada.");
+            System.out.println("Entrada invalida para o ID. Operacao cancelada.");
             return;
         }
 
@@ -104,19 +153,25 @@ public class ProdutoService {
             produto.setNome(novoNome);
         }
 
-        System.out.print("Novo preço (deixe em branco para manter o atual, use ',' para decimais): "); // Edição de preço
+        System.out.print("Nova descricao (deixe em branco para manter a atual): ");
+        String novaDescricao = scanner.nextLine();
+        if (!novaDescricao.trim().isEmpty()) {
+            produto.setDescricao(novaDescricao);
+        }
+
+        System.out.print("Novo preco (deixe em branco para manter o atual, use '.' para decimais): "); // Edicao de preco
         String novoPrecoStr = scanner.nextLine();
         if (!novoPrecoStr.trim().isEmpty()) {
             try {
-                // Substitui vírgula por ponto para Double.parseDouble
+                // Substitui virgula por ponto para Double.parseDouble
                 double novoPreco = Double.parseDouble(novoPrecoStr.replace(",", "."));
                 if (novoPreco < 0) {
-                    System.out.println("Preço não pode ser negativo. Mantendo o atual.");
+                    System.out.println("Preco nao pode ser negativo. Mantendo o atual.");
                 } else {
                     produto.setPreco(novoPreco);
                 }
             } catch (NumberFormatException e) {
-                System.out.println("Entrada inválida para o preço. Mantendo o preço atual.");
+                System.out.println("Entrada invalida para o preco. Mantendo o preco atual.");
             }
         }
 
@@ -125,7 +180,7 @@ public class ProdutoService {
 
         if (alterarFornecedor.equalsIgnoreCase("S")) {
             if (fornecedorService == null) {
-                System.out.println("Serviço de fornecedores não disponível.");
+                System.out.println("Servico de fornecedores nao disponivel.");
                 return;
             }
             fornecedorService.consultaTodosFornecedores();
@@ -135,7 +190,7 @@ public class ProdutoService {
             try {
                 codigoFornecedor = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
-                System.out.println("Entrada inválida para o código do fornecedor. Mantendo o fornecedor atual.");
+                System.out.println("Entrada invalida para o codigo do fornecedor. Mantendo o fornecedor atual.");
                 return;
             }
 
@@ -148,43 +203,53 @@ public class ProdutoService {
             }
         }
 
-        System.out.println("Produto atualizado com sucesso");
+        System.out.println("Produto editado com sucesso.");
+        salvarProdutosEmArquivo();
     }
 
     public void excluirProduto(Scanner scanner) {
-        if (produtos.isEmpty()) {
-            System.out.println("Nao ha produtos cadastrados para excluir.");
+    if (produtos.isEmpty()) {
+        System.out.println("Nao ha produtos cadastrados para excluir.");
+        return;
+    }
+
+    consultaTodosProdutos();
+
+    System.out.print("Digite o ID do produto que deseja excluir: ");
+    int id;
+    try {
+        id = Integer.parseInt(scanner.nextLine());
+    } catch (NumberFormatException e) {
+        System.out.println("Entrada invalida para o ID. Operacao cancelada.");
+        return;
+    }
+
+    Produto produtoParaExcluir = buscarProdutoPorId(id);
+
+    if (produtoParaExcluir == null) {
+        System.out.println("Produto nao encontrado");
+        return;
+    }
+
+    // VerificaÃ§Ã£o de estoque
+    if (estoqueService != null) {
+        Estoque itemEstoque = estoqueService.buscarItemEstoquePorProdutoId(produtoParaExcluir.getId());
+        if (itemEstoque != null && itemEstoque.getQuantidade() > 0) {
+            System.out.println("Nao e possÃ­vel excluir o produto pois ele possui estoque (quantidade: " + itemEstoque.getQuantidade() + ")");
             return;
-        }
-
-        consultaTodosProdutos();
-
-        System.out.print("Digite o ID do produto que deseja excluir: ");
-        int id;
-        try {
-            id = Integer.parseInt(scanner.nextLine());
-        } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o ID. Operacao cancelada.");
-            return;
-        }
-
-        Produto produtoParaExcluir = buscarProdutoPorId(id);
-
-        if (produtoParaExcluir == null) {
-            System.out.println("Produto nao encontrado");
-            return;
-        }
-
-        System.out.print("Tem certeza que deseja excluir o produto '" + produtoParaExcluir.getNome() + "'? (S/N): ");
-        String confirmacao = scanner.nextLine();
-
-        if (confirmacao.equalsIgnoreCase("S")) {
-            produtos.remove(produtoParaExcluir);
-            System.out.println("Produto excluído com sucesso");
-        } else {
-            System.out.println("Operacao cancelada.");
         }
     }
+
+    System.out.print("Tem certeza que deseja excluir o produto '" + produtoParaExcluir.getNome() + "'? (S/N): ");
+    String confirmacao = scanner.nextLine();
+
+    if (confirmacao.equalsIgnoreCase("S")) {
+        produtos.remove(produtoParaExcluir);
+        System.out.println("Produto excluido com sucesso");
+    } else {
+        System.out.println("Operacao cancelada.");
+    }
+}
 
     public void consultaProduto(Scanner scanner) {
         if (produtos.isEmpty()) {
@@ -195,13 +260,14 @@ public class ProdutoService {
         System.out.println("\n--- Consultar Produto por ---");
         System.out.println("1. Nome ");
         System.out.println("2. Codigo");
-        System.out.println("3. Todos os produtos");
+        System.out.println("3. Descricao");
+        System.out.println("4. Todos os produtos");
         System.out.print("Escolha uma opcao: ");
         int opcao;
         try {
             opcao = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida. Operacao cancelada.");
+            System.out.println("Entrada invalida. Operacao cancelada.");
             return;
         }
 
@@ -213,6 +279,9 @@ public class ProdutoService {
                 consultaProdutoPorCodigo(scanner);
                 break;
             case 3:
+                consultaProdutoPorDescricao(scanner);
+                break;
+            case 4:
                 consultaTodosProdutos();
                 break;
             default:
@@ -226,15 +295,15 @@ public class ProdutoService {
         String nomeProduto = scanner.nextLine();
 
         System.out.println("\n--- Lista de Produtos ---");
-        System.out.println("Codigo | Nome | Fornecedor | Preço"); // Coluna Preço adicionada
-        System.out.println("------------------------------------------------------------");
+        System.out.println("Codigo | Nome | Descricao | Fornecedor | Preco");
+        System.out.println("----------------------------------------------------------------------------");
 
         boolean encontrou = false;
 
         for (Produto p : produtos) {
             if (p.getNome().toLowerCase().contains(nomeProduto.toLowerCase())) {
-                System.out.printf("%-6d | %-15s | %-15s | R$ %.2f%n",
-                        p.getId(), p.getNome(), p.getFornecedor().getNome(), p.getPreco());
+                System.out.printf("%-6d | %-15s | %-20s | %-15s | R$ %.2f%n",
+                        p.getId(), p.getNome(), p.getDescricao(), p.getFornecedor().getNome(), p.getPreco());
                 encontrou = true;
             }
         }
@@ -242,7 +311,32 @@ public class ProdutoService {
         if (!encontrou) {
             System.out.println("Nenhum produto encontrado com esse nome.");
         }
-        System.out.println("------------------------------------------------------------");
+        System.out.println("----------------------------------------------------------------------------");
+        System.out.println("Total de produtos: " + produtos.size());
+    }
+
+    private void consultaProdutoPorDescricao(Scanner scanner) {
+        System.out.print("Digite uma palavra-chave da Descricao do Produto: ");
+        String palavraChave = scanner.nextLine();
+
+        System.out.println("\n--- Lista de Produtos ---");
+        System.out.println("Codigo | Nome | Descricao | Fornecedor | Preco");
+        System.out.println("----------------------------------------------------------------------------");
+
+        boolean encontrou = false;
+
+        for (Produto p : produtos) {
+            if (p.getDescricao().toLowerCase().contains(palavraChave.toLowerCase())) {
+                System.out.printf("%-6d | %-15s | %-20s | %-15s | R$ %.2f%n",
+                        p.getId(), p.getNome(), p.getDescricao(), p.getFornecedor().getNome(), p.getPreco());
+                encontrou = true;
+            }
+        }
+
+        if (!encontrou) {
+            System.out.println("Nenhum produto encontrado com essa palavra-chave.");
+        }
+        System.out.println("----------------------------------------------------------------------------");
         System.out.println("Total de produtos: " + produtos.size());
     }
 
@@ -252,20 +346,20 @@ public class ProdutoService {
         try {
             codigoProduto = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o código do produto. Operacao cancelada.");
+            System.out.println("Entrada invalida para o codigo do produto. Operacao cancelada.");
             return;
         }
 
         System.out.println("\n--- Lista de Produtos ---");
-        System.out.println("Codigo | Nome | Fornecedor | Preço"); // Coluna Preço adicionada
-        System.out.println("------------------------------------------------------------");
+        System.out.println("Codigo | Nome | Descricao | Fornecedor | Preco");
+        System.out.println("----------------------------------------------------------------------------");
 
         boolean encontrou = false;
 
         for (Produto p : produtos) {
             if (codigoProduto == p.getId()) {
-                System.out.printf("%-6d | %-15s | %-15s | R$ %.2f%n",
-                        p.getId(), p.getNome(), p.getFornecedor().getNome(), p.getPreco());
+                System.out.printf("%-6d | %-15s | %-20s | %-15s | R$ %.2f%n",
+                        p.getId(), p.getNome(), p.getDescricao(), p.getFornecedor().getNome(), p.getPreco());
                 encontrou = true;
             }
         }
@@ -273,7 +367,7 @@ public class ProdutoService {
         if (!encontrou) {
             System.out.println("Nenhum produto encontrado com esse codigo.");
         }
-        System.out.println("------------------------------------------------------------");
+        System.out.println("----------------------------------------------------------------------------");
         System.out.println("Total de produtos: " + produtos.size());
     }
 
@@ -284,15 +378,15 @@ public class ProdutoService {
         }
 
         System.out.println("\n--- Lista de Produtos ---");
-        System.out.println("Codigo | Nome | Fornecedor | Preço"); // Coluna Preço adicionada
-        System.out.println("------------------------------------------------------------");
+        System.out.println("Codigo | Nome | Descricao | Fornecedor | Preco");
+        System.out.println("----------------------------------------------------------------------------");
 
         for (Produto p : produtos) {
-            System.out.printf("%-6d | %-15s | %-15s | R$ %.2f%n",
-                    p.getId(), p.getNome(), p.getFornecedor().getNome(), p.getPreco());
+            System.out.printf("%-6d | %-15s | %-20s | %-15s | R$ %.2f%n",
+                    p.getId(), p.getNome(), p.getDescricao(), p.getFornecedor().getNome(), p.getPreco());
         }
 
-        System.out.println("------------------------------------------------------------");
+        System.out.println("----------------------------------------------------------------------------");
         System.out.println("Total de produtos: " + produtos.size());
     }
 
@@ -308,7 +402,7 @@ public class ProdutoService {
     public List<Produto> buscarProdutosPorFornecedor(Fornecedor fornecedor) {
         List<Produto> produtosDoFornecedor = new ArrayList<>();
         for (Produto p : produtos) {
-            // Verifica se o fornecedor do produto é o mesmo que o fornecedor passado
+            // Verifica se o fornecedor do produto e o mesmo que o fornecedor passado
             if (p.getFornecedor().getId() == fornecedor.getId()) {
                 produtosDoFornecedor.add(p);
             }

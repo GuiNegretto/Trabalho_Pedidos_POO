@@ -1,8 +1,7 @@
 package Models;
 
-import java.util.InputMismatchException;
-import java.util.Scanner;
 import Services.*;
+import java.util.Scanner;
 
 public class Menu {
 
@@ -54,7 +53,7 @@ public class Menu {
                         menuAdmin();
                         break;
                     case 2:
-                        menuCliente();
+                        menuCliente(login); // Passa login do cliente logado
                         break;
                     case 3:
                         System.out.println("Senha incorreta, tente novamente\n");
@@ -72,20 +71,18 @@ public class Menu {
             System.out.println("1 - Fornecedores");
             System.out.println("2 - Produtos");
             System.out.println("3 - Estoque");
-            System.out.println("4 - Clientes"); 
-            System.out.println("5 - Endereços"); 
+            System.out.println("4 - Clientes");
+            System.out.println("5 - Enderecos");
             System.out.println("6 - Pedidos");
-            System.out.println("7 - Voltar para Login");
+            System.out.println("7 - Sair");
             System.out.print("Escolha uma opcao: ");
-
             int opcao = 0;
             try {
                 opcao = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
-                System.out.println("Entrada inválida. Por favor, digite um número.");
+                System.out.println("Entrada invalida. Por favor, digite um numero.");
                 continue;
             }
-
             switch (opcao) {
                 case 1:
                     menuFornecedores();
@@ -97,13 +94,13 @@ public class Menu {
                     menuEstoque();
                     break;
                 case 4:
-                    menuClientes(); 
+                    menuClientes();
                     break;
                 case 5:
-                    menuEnderecos(); 
+                    menuEnderecos();
                     break;
                 case 6:
-                    menuPedidosAdmin(); 
+                    menuPedidosAdmin();
                     break;
                 case 7:
                     System.out.println("Voltando para a tela de Login.");
@@ -114,25 +111,25 @@ public class Menu {
         }
     }
 
-    private void menuCliente() {
+
+
+    private void menuCliente(String loginCliente) {
         while (true) {
             System.out.println("\n--- Menu do Cliente ---");
             System.out.println("1 - Buscar Fornecedor");
             System.out.println("2 - Buscar Produtos");
             System.out.println("3 - Estoque de Produto");
-            System.out.println("4 - Meus Pedidos"); // 
+            System.out.println("4 - Meus Pedidos");
             System.out.println("5 - Realizar Novo Pedido");
-            System.out.println("6 - Voltar para Login");
+            System.out.println("6 - Sair");
             System.out.print("Escolha uma opcao: ");
-
             int opcao = 0;
             try {
                 opcao = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
-                System.out.println("Entrada inválida. Por favor, digite um número.");
+                System.out.println("Entrada invalida. Por favor, digite um numero.");
                 continue;
             }
-
             switch (opcao) {
                 case 1:
                     fornecedorService.consultaFornecedor(scanner);
@@ -144,16 +141,16 @@ public class Menu {
                     estoqueService.consultarItemEstoque(scanner);
                     break;
                 case 4:
-                    pedidoService.consultarPedidosPorCliente(scanner); 
+                    pedidoService.consultarPedidosPorCliente(scanner); // Ajuste: pode usar loginCliente para filtrar
                     break;
                 case 5:
-                    pedidoService.realizarNovoPedido(scanner); 
+                    pedidoService.realizarNovoPedido(scanner); // So permite produtos disponiveis
                     break;
                 case 6:
-                    System.out.println("Voltando para a tela de Login.");
+                    System.out.println("Saindo do menu cliente...");
                     return;
                 default:
-                    System.out.println("Nao existe essa opcao, tente novamente.");
+                    System.out.println("Opcao invalida.");
             }
         }
     }
@@ -163,9 +160,9 @@ public class Menu {
     private void menuFornecedores() {
         while (true) {
             System.out.println("\n--- Menu de Fornecedores ---");
-            System.out.println("1 - Inclusão de Fornecedor");
-            System.out.println("2 - Alteração de Fornecedor");
-            System.out.println("3 - Exclusão de Fornecedor");
+            System.out.println("1 - Inclusao de Fornecedor");
+            System.out.println("2 - Alteracao de Fornecedor");
+            System.out.println("3 - Exclusao de Fornecedor");
             System.out.println("4 - Consulta de Fornecedores");
             System.out.println("5 - Voltar");
             System.out.print("Escolha uma opcao: ");
@@ -174,7 +171,7 @@ public class Menu {
             try {
                 opcao = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
-                System.out.println("Entrada inválida. Por favor, digite um número.");
+                System.out.println("Entrada invalida. Por favor, digite um numero.");
                 continue;
             }
 
@@ -194,7 +191,7 @@ public class Menu {
                 case 5:
                     return;
                 default:
-                    System.out.println("Opção inválida. Tente novamente.");
+                    System.out.println("Opcao invalida. Tente novamente.");
             }
         }
     }
@@ -202,9 +199,9 @@ public class Menu {
     private void menuProduto() {
         while (true) {
             System.out.println("\n--- Menu de Produtos ---");
-            System.out.println("1 - Inclusão de Produto");
-            System.out.println("2 - Alteração de Produto");
-            System.out.println("3 - Exclusão de Produto");
+            System.out.println("1 - Inclusao de Produto");
+            System.out.println("2 - Alteracao de Produto");
+            System.out.println("3 - Exclusao de Produto");
             System.out.println("4 - Consulta de Produtos");
             System.out.println("5 - Voltar");
             System.out.print("Escolha uma opcao: ");
@@ -213,7 +210,7 @@ public class Menu {
             try {
                 opcao = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
-                System.out.println("Entrada inválida. Por favor, digite um número.");
+                System.out.println("Entrada invalida. Por favor, digite um numero.");
                 continue;
             }
 
@@ -241,9 +238,9 @@ public class Menu {
     private void menuEstoque() {
         while (true) {
             System.out.println("\n--- Menu de Estoque ---");
-            System.out.println("1 - Inclusão de Item no Estoque");
-            System.out.println("2 - Exclusão de Item do Estoque");
-            System.out.println("3 - Alteração de Quantidade no Estoque"); 
+            System.out.println("1 - Inclusao de Item no Estoque");
+            System.out.println("2 - Exclusao de Item do Estoque");
+            System.out.println("3 - Alteracao de Quantidade no Estoque"); 
             System.out.println("4 - Consulta do Estoque");
             System.out.println("5 - Voltar");
             System.out.print("Escolha uma opcao: ");
@@ -252,7 +249,7 @@ public class Menu {
             try {
                 opcao = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
-                System.out.println("Entrada inválida. Por favor, digite um número.");
+                System.out.println("Entrada invalida. Por favor, digite um numero.");
                 continue;
             }
 
@@ -280,9 +277,9 @@ public class Menu {
     private void menuClientes() { 
         while (true) {
             System.out.println("\n--- Menu de Clientes ---");
-            System.out.println("1 - Inclusão de Cliente");
-            System.out.println("2 - Alteração de Cliente");
-            System.out.println("3 - Exclusão de Cliente");
+            System.out.println("1 - Inclusao de Cliente");
+            System.out.println("2 - Alteracao de Cliente");
+            System.out.println("3 - Exclusao de Cliente");
             System.out.println("4 - Consulta de Clientes");
             System.out.println("5 - Voltar");
             System.out.print("Escolha uma opcao: ");
@@ -291,7 +288,7 @@ public class Menu {
             try {
                 opcao = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
-                System.out.println("Entrada inválida. Por favor, digite um número.");
+                System.out.println("Entrada invalida. Por favor, digite um numero.");
                 continue;
             }
 
@@ -311,18 +308,18 @@ public class Menu {
                 case 5:
                     return;
                 default:
-                    System.out.println("Opção inválida. Tente novamente.");
+                    System.out.println("Opcao invalida. Tente novamente.");
             }
         }
     }
 
     private void menuEnderecos() {
         while (true) {
-            System.out.println("\n--- Menu de Endereços ---");
-            System.out.println("1 - Inclusão de Endereço");
-            System.out.println("2 - Alteração de Endereço");
-            System.out.println("3 - Exclusão de Endereço");
-            System.out.println("4 - Consulta de Endereços");
+            System.out.println("\n--- Menu de Enderecos ---");
+            System.out.println("1 - Inclusao de Endereco");
+            System.out.println("2 - Alteracao de Endereco");
+            System.out.println("3 - Exclusao de Endereco");
+            System.out.println("4 - Consulta de Enderecos");
             System.out.println("5 - Voltar");
             System.out.print("Escolha uma opcao: ");
 
@@ -330,7 +327,7 @@ public class Menu {
             try {
                 opcao = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
-                System.out.println("Entrada inválida. Por favor, digite um número.");
+                System.out.println("Entrada invalida. Por favor, digite um numero.");
                 continue;
             }
 
@@ -350,7 +347,7 @@ public class Menu {
                 case 5:
                     return;
                 default:
-                    System.out.println("Opção inválida. Tente novamente.");
+                    System.out.println("Opcao invalida. Tente novamente.");
             }
         }
     }
@@ -358,9 +355,9 @@ public class Menu {
     private void menuPedidosAdmin() { 
         while (true) {
             System.out.println("\n--- Menu de Pedidos (Admin) ---");
-            System.out.println("1 - Realizar Novo Pedido (Admin)"); // Admin também pode criar pedidos
+            System.out.println("1 - Realizar Novo Pedido (Admin)"); // Admin tambem pode criar pedidos
             System.out.println("2 - Consultar Pedidos");
-            System.out.println("3 - Atualizar Situação do Pedido");
+            System.out.println("3 - Atualizar Situacao do Pedido");
             System.out.println("4 - Voltar");
             System.out.print("Escolha uma opcao: ");
 
@@ -368,7 +365,7 @@ public class Menu {
             try {
                 opcao = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
-                System.out.println("Entrada inválida. Por favor, digite um número.");
+                System.out.println("Entrada invalida. Por favor, digite um numero.");
                 continue;
             }
 
@@ -385,7 +382,7 @@ public class Menu {
                 case 4:
                     return;
                 default:
-                    System.out.println("Opção inválida. Tente novamente.");
+                    System.out.println("Opcao invalida. Tente novamente.");
             }
         }
     }

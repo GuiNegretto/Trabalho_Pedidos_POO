@@ -1,21 +1,61 @@
 package Services;
 
+import Models.Cliente;
+import Models.Endereco;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
-import Models.Cliente;
-import Models.Endereco;
-import Services.EnderecoService;
 
 public class ClienteService {
     private List<Cliente> clientes;
+
+    List<Cliente> getClientes() {
+        return clientes;
+    }
     private int proximoId;
-    private EnderecoService enderecoService; // Dependência para Endereco
+    private EnderecoService enderecoService; 
+    private static final String ARQUIVO_CLIENTES = "src/Arquivos/clientes.dat";
 
     public ClienteService(EnderecoService enderecoService) {
         this.clientes = new ArrayList<>();
         this.proximoId = 1;
         this.enderecoService = enderecoService;
+        carregarClientesDeArquivo();
+        atualizarProximoId();
+    }
+
+    public void salvarClientesEmArquivo() {
+        try {
+            File pasta = new File("Arquivos");
+            if (!pasta.exists()) pasta.mkdir();
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(ARQUIVO_CLIENTES));
+            oos.writeObject(clientes);
+            oos.close();
+        } catch (IOException e) {
+            System.out.println("Erro ao salvar clientes: " + e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public void carregarClientesDeArquivo() {
+        File arquivo = new File(ARQUIVO_CLIENTES);
+        if (!arquivo.exists()) return;
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(ARQUIVO_CLIENTES));
+            clientes = (List<Cliente>) ois.readObject();
+            ois.close();
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Erro ao carregar clientes: " + e.getMessage());
+        }
+    }
+
+    private void atualizarProximoId() {
+        int maiorId = 0;
+        for (Cliente c : clientes) {
+            if (c.getId() > maiorId) maiorId = c.getId();
+        }
+        proximoId = maiorId + 1;
     }
 
     public int getContadorClientes() {
@@ -23,7 +63,7 @@ public class ClienteService {
     }
 
     public void inserirCliente(Scanner scanner) {
-        System.out.println("\n--- Inserção de Cliente ---");
+        System.out.println("\n--- Insercao de Cliente ---");
         System.out.print("Insira o nome do Cliente: ");
         String nome = scanner.nextLine();
 
@@ -33,34 +73,35 @@ public class ClienteService {
         System.out.print("Insira o e-mail do Cliente: ");
         String email = scanner.nextLine();
 
-        System.out.print("Insira o cartão de crédito do Cliente: ");
+        System.out.print("Insira o cartao de credito do Cliente: ");
         String cartaoCredito = scanner.nextLine();
 
         Endereco enderecoCliente = null;
         if (enderecoService.getContadorEnderecos() > 0) {
-            System.out.print("Deseja vincular um endereço existente? (S/N): ");
+            System.out.print("Deseja vincular um endereco existente? (S/N): ");
             String vincularEndereco = scanner.nextLine();
             if (vincularEndereco.equalsIgnoreCase("S")) {
                 enderecoService.consultaTodosEnderecos();
-                System.out.print("Digite o ID do endereço a vincular: ");
+                System.out.print("Digite o ID do endereco a vincular: ");
                 int idEndereco;
                 try {
                     idEndereco = Integer.parseInt(scanner.nextLine());
                     enderecoCliente = enderecoService.buscarEnderecoPorId(idEndereco);
                     if (enderecoCliente == null) {
-                        System.out.println("Endereço não encontrado. Cliente será cadastrado sem endereço vinculado.");
+                        System.out.println("Endereco nao encontrado. Cliente sera cadastrado sem endereco vinculado.");
                     }
                 } catch (NumberFormatException e) {
-                    System.out.println("ID de endereço inválido. Cliente será cadastrado sem endereço vinculado.");
+                    System.out.println("ID de endereco invalido. Cliente sera cadastrado sem endereco vinculado.");
                 }
             }
         } else {
-            System.out.println("Não há endereços cadastrados para vincular.");
+            System.out.println("Nao ha enderecos cadastrados para vincular.");
         }
 
 
         Cliente novoCliente = new Cliente(proximoId++, nome, telefone, email, cartaoCredito, enderecoCliente);
         clientes.add(novoCliente);
+        salvarClientesEmArquivo();
         System.out.println("Cliente inserido com sucesso, ID: " + novoCliente.getId());
     }
 
@@ -77,7 +118,7 @@ public class ClienteService {
         try {
             id = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o ID. Operacao cancelada.");
+            System.out.println("Entrada invalida para o ID. Operacao cancelada.");
             return;
         }
 
@@ -107,38 +148,47 @@ public class ClienteService {
             cliente.setEmail(novoEmail);
         }
 
-        System.out.print("Novo cartão de crédito (deixe em branco para manter o atual): ");
+        System.out.print("Novo cartao de credito (deixe em branco para manter o atual): ");
         String novoCartaoCredito = scanner.nextLine();
         if (!novoCartaoCredito.trim().isEmpty()) {
             cliente.setCartaoCredito(novoCartaoCredito);
         }
 
-        System.out.print("Deseja alterar o endereço vinculado? (S/N): ");
+        System.out.print("Deseja alterar o endereco vinculado? (S/N): ");
         String alterarEndereco = scanner.nextLine();
         if (alterarEndereco.equalsIgnoreCase("S")) {
+        	if (enderecoService != null) {
             enderecoService.consultaTodosEnderecos();
-            System.out.print("Digite o ID do novo endereço (0 para remover): ");
-            int idEndereco;
+            boolean temEndereco = enderecoService.temEnderecos();
             try {
+            	if(temEndereco) {
+            	System.out.print("Digite o ID do novo endereco (0 para remover): ");
+            	int idEndereco;
                 idEndereco = Integer.parseInt(scanner.nextLine());
                 if (idEndereco == 0) {
                     cliente.setEndereco(null);
-                    System.out.println("Endereço removido do cliente.");
+                    System.out.println("Endereco removido do cliente.");
                 } else {
                     Endereco novoEndereco = enderecoService.buscarEnderecoPorId(idEndereco);
                     if (novoEndereco == null) {
-                        System.out.println("Endereço não encontrado. Mantendo o endereço atual.");
+                        System.out.println("Endereco nao encontrado. Mantendo o endereco atual.");
                     } else {
                         cliente.setEndereco(novoEndereco);
-                        System.out.println("Endereço atualizado com sucesso.");
+                        System.out.println("Endereco atualizado com sucesso.");
                     }
                 }
+            	}else {
+                    System.out.println("Servico de enderecos nao disponivel.");
+            	}
             } catch (NumberFormatException e) {
-                System.out.println("ID de endereço inválido. Mantendo o endereço atual.");
+                System.out.println("ID de endereco invalido. Mantendo o endereco atual.");
             }
-        }
-
+        
         System.out.println("Cliente atualizado com sucesso.");
+        salvarClientesEmArquivo();
+      
+        }
+        }
     }
 
     public void excluirCliente(Scanner scanner) {
@@ -154,7 +204,7 @@ public class ClienteService {
         try {
             id = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o ID. Operacao cancelada.");
+            System.out.println("Entrada invalida para o ID. Operacao cancelada.");
             return;
         }
 
@@ -165,15 +215,16 @@ public class ClienteService {
             return;
         }
         
-        // Em um sistema real, você verificaria se o cliente tem pedidos antes de excluir
-        // Aqui, para simplificar, permitiremos a exclusão sem essa verificação.
+        // Em um sistema real, voce verificaria se o cliente tem pedidos antes de excluir
+        // Aqui, para simplificar, permitiremos a exclusao sem essa verificacao.
 
         System.out.print("Tem certeza que deseja excluir o cliente '" + clienteParaExcluir.getNome() + "'? (S/N): ");
         String confirmacao = scanner.nextLine();
 
         if (confirmacao.equalsIgnoreCase("S")) {
             clientes.remove(clienteParaExcluir);
-            System.out.println("Cliente excluído com sucesso.");
+            salvarClientesEmArquivo();
+            System.out.println("Cliente excluido com sucesso.");
         } else {
             System.out.println("Operacao cancelada.");
         }
@@ -181,20 +232,20 @@ public class ClienteService {
 
     public void consultaCliente(Scanner scanner) {
         if (clientes.isEmpty()) {
-            System.out.println("Nao ha clientes cadastrados.");
+            System.out.println("Nenhum cliente encontrado.");
             return;
         }
 
         System.out.println("\n--- Consultar Cliente por ---");
         System.out.println("1 - Nome");
-        System.out.println("2 - Código");
+        System.out.println("2 - Codigo");
         System.out.println("3 - Todos os Clientes");
         System.out.print("Escolha uma opcao: ");
         int opcao;
         try {
             opcao = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida. Operacao cancelada.");
+            System.out.println("Entrada invalida. Operacao cancelada.");
             return;
         }
 
@@ -219,7 +270,7 @@ public class ClienteService {
         String nomeCliente = scanner.nextLine();
 
         System.out.println("\n--- Lista de Clientes ---");
-        System.out.println("ID | Nome | Telefone | Email | Cartão de Crédito | Endereço");
+        System.out.println("ID | Nome | Telefone | Email | Cartao de Credito | Endereco");
         System.out.println("----------------------------------------------------------------------------------");
 
         boolean encontrou = false;
@@ -242,17 +293,17 @@ public class ClienteService {
     }
 
     private void consultaClientePorCodigo(Scanner scanner) {
-        System.out.print("Digite o Código do Cliente: ");
+        System.out.print("Digite o Codigo do Cliente: ");
         int codigoCliente;
         try {
             codigoCliente = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o código. Operacao cancelada.");
+            System.out.println("Entrada invalida para o codigo. Operacao cancelada.");
             return;
         }
 
         System.out.println("\n--- Lista de Clientes ---");
-        System.out.println("ID | Nome | Telefone | Email | Cartão de Crédito | Endereço");
+        System.out.println("ID | Nome | Telefone | Email | Cartao de Credito | Endereco");
         System.out.println("----------------------------------------------------------------------------------");
 
         boolean encontrou = false;
@@ -268,7 +319,7 @@ public class ClienteService {
         }
 
         if (!encontrou) {
-            System.out.println("Nenhum cliente encontrado com esse código.");
+            System.out.println("Nenhum cliente encontrado com esse codigo.");
         }
         System.out.println("----------------------------------------------------------------------------------");
         System.out.println("Total de clientes: " + clientes.size());
@@ -281,7 +332,7 @@ public class ClienteService {
         }
 
         System.out.println("\n--- Lista de Clientes ---");
-        System.out.println("ID | Nome | Telefone | Email | Cartão de Crédito | Endereço");
+        System.out.println("ID | Nome | Telefone | Email | Cartao de Credito | Endereco");
         System.out.println("----------------------------------------------------------------------------------");
 
         for (Cliente c : clientes) {

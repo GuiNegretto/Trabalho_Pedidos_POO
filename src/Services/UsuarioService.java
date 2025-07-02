@@ -4,14 +4,14 @@ import Models.Usuario;
 
 public class UsuarioService {
 
-    // A lógica de verificação de login e senha agora está aqui e não é estática
+    // A logica de verificacao de login e senha agora esta aqui e nao e estatica
     public int verificaLogin(String nome) {
         if (nome.equalsIgnoreCase(Usuario.getLoginAdmin())) {
             return 1; // Admin
         } else if (nome.equalsIgnoreCase(Usuario.getLoginCliente())) {
             return 2; // Cliente
         } else {
-            return 3; // Usuário não existe
+            return 3; // Usuario nao existe
         }
     }
 

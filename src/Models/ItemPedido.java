@@ -1,9 +1,12 @@
 package Models;
 
-public class ItemPedido {
+import java.io.Serializable;
+
+public class ItemPedido implements Serializable {
+    private static final long serialVersionUID = 1L;
     private Produto produto;
     private int quantidade;
-    private double precoUnitario; // Preço do produto no momento do pedido
+    private double precoUnitario; // Preco do produto no momento do pedido
 
     public ItemPedido() {
     }

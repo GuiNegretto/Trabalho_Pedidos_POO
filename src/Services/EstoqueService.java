@@ -1,19 +1,48 @@
 package Services;
 
+import Models.Estoque;
+import Models.Produto;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
-import Models.Estoque;
-import Models.Produto;
+
+import java.io.*;
 
 public class EstoqueService {
 
     private List<Estoque> itensEstoque;
-    private ProdutoService produtoService; // Dependência de ProdutoService
+    private ProdutoService produtoService; // Dependencia de ProdutoService
+    private static final String ARQUIVO_ESTOQUE = "src/Arquivos/estoque.dat";
 
     public EstoqueService(ProdutoService produtoService) {
         this.itensEstoque = new ArrayList<>();
         this.produtoService = produtoService;
+        carregarEstoqueDeArquivo();
+    }
+
+    public void salvarEstoqueEmArquivo() {
+        try {
+            File pasta = new File("Arquivos");
+            if (!pasta.exists()) pasta.mkdir();
+            ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(ARQUIVO_ESTOQUE));
+            oos.writeObject(itensEstoque);
+            oos.close();
+        } catch (IOException e) {
+            System.out.println("Erro ao salvar estoque: " + e.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public void carregarEstoqueDeArquivo() {
+        File arquivo = new File(ARQUIVO_ESTOQUE);
+        if (!arquivo.exists()) return;
+        try {
+            ObjectInputStream ois = new ObjectInputStream(new FileInputStream(ARQUIVO_ESTOQUE));
+            itensEstoque = (List<Estoque>) ois.readObject();
+            ois.close();
+        } catch (IOException | ClassNotFoundException e) {
+            System.out.println("Erro ao carregar estoque: " + e.getMessage());
+        }
     }
 
     public int getContadorItens() {
@@ -24,7 +53,7 @@ public class EstoqueService {
         System.out.println("\n--- Adicao de Item ao Estoque ---");
 
         if (produtoService.getContadorProdutos() == 0) {
-            System.out.println("Nao há produtos cadastrados. Cadastre um produto primeiro.");
+            System.out.println("Nao ha produtos cadastrados. Cadastre um produto primeiro.");
             return;
         }
 
@@ -35,7 +64,7 @@ public class EstoqueService {
         try {
             codigoProduto = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o código do produto. Operacao cancelada.");
+            System.out.println("Entrada invalida para o codigo do produto. Operacao cancelada.");
             return;
         }
 
@@ -48,13 +77,13 @@ public class EstoqueService {
 
         Estoque itemExistente = buscarItemEstoquePorProdutoId(produtoEncontrado.getId());
         if (itemExistente != null) {
-            System.out.println("Este produto já existe no estoque. Quantidade atual: " + itemExistente.getQuantidade());
+            System.out.println("Este produto ja existe no estoque. Quantidade atual: " + itemExistente.getQuantidade());
             System.out.print("Digite a quantidade a ser ADICIONADA: ");
             int quantidadeAdicional;
             try {
                 quantidadeAdicional = Integer.parseInt(scanner.nextLine());
             } catch (NumberFormatException e) {
-                System.out.println("Entrada inválida. Operacao cancelada.");
+                System.out.println("Entrada invalida. Operacao cancelada.");
                 return;
             }
 
@@ -63,6 +92,7 @@ public class EstoqueService {
                 return;
             }
             itemExistente.setQuantidade(itemExistente.getQuantidade() + quantidadeAdicional);
+            salvarEstoqueEmArquivo();
             System.out.println("Quantidade atualizada com sucesso. Nova quantidade: " + itemExistente.getQuantidade());
             return;
         }
@@ -72,7 +102,7 @@ public class EstoqueService {
         try {
             quantidade = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida. Operacao cancelada.");
+            System.out.println("Entrada invalida. Operacao cancelada.");
             return;
         }
 
@@ -83,13 +113,13 @@ public class EstoqueService {
 
         Estoque novoItem = new Estoque(produtoEncontrado, quantidade);
         itensEstoque.add(novoItem);
-
+        salvarEstoqueEmArquivo();
         System.out.println("Item adicionado ao estoque com sucesso");
     }
 
     public void alterarItemEstoque(Scanner scanner) {
         if (itensEstoque.isEmpty()) {
-            System.out.println("Nao há itens no estoque para alterar.");
+            System.out.println("Nao ha itens no estoque para alterar.");
             return;
         }
 
@@ -100,7 +130,7 @@ public class EstoqueService {
         try {
             codigoProduto = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o código do produto. Operacao cancelada.");
+            System.out.println("Entrada invalida para o codigo do produto. Operacao cancelada.");
             return;
         }
 
@@ -110,6 +140,8 @@ public class EstoqueService {
             System.out.println("Produto nao encontrado no estoque");
             return;
         }
+        // Apos alteracao
+        salvarEstoqueEmArquivo();
 
         System.out.println("Alterando quantidade do produto: " + item.getProduto().getNome());
         System.out.println("Quantidade atual: " + item.getQuantidade());
@@ -118,7 +150,7 @@ public class EstoqueService {
         try {
             novaQuantidade = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para a nova quantidade. Operacao cancelada.");
+            System.out.println("Entrada invalida para a nova quantidade. Operacao cancelada.");
             return;
         }
 
@@ -146,7 +178,7 @@ public class EstoqueService {
 
     public void excluirItemEstoque(Scanner scanner) {
         if (itensEstoque.isEmpty()) {
-            System.out.println("Nao há itens no estoque para excluir.");
+            System.out.println("Nao ha itens no estoque para excluir.");
             return;
         }
 
@@ -157,7 +189,7 @@ public class EstoqueService {
         try {
             codigoProduto = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o código do produto. Operacao cancelada.");
+            System.out.println("Entrada invalida para o codigo do produto. Operacao cancelada.");
             return;
         }
 
@@ -173,7 +205,7 @@ public class EstoqueService {
 
         if (confirmacao.equalsIgnoreCase("S")) {
             itensEstoque.remove(itemParaExcluir);
-            System.out.println("Item excluído do estoque com sucesso");
+            System.out.println("Item excluido do estoque com sucesso");
         } else {
             System.out.println("Operacao cancelada.");
         }
@@ -181,7 +213,7 @@ public class EstoqueService {
 
     public void consultarItemEstoque(Scanner scanner) {
         if (itensEstoque.isEmpty()) {
-            System.out.println("Nao há itens no estoque para consultar.");
+            System.out.println("Nao ha itens no estoque para consultar.");
             return;
         }
 
@@ -194,7 +226,7 @@ public class EstoqueService {
         try {
             opcao = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida. Operacao cancelada.");
+            System.out.println("Entrada invalida. Operacao cancelada.");
             return;
         }
 
@@ -219,19 +251,17 @@ public class EstoqueService {
         String nomeProduto = scanner.nextLine();
 
         System.out.println("\n--- Lista de Itens no Estoque ---");
-        System.out.println("Codigo | Nome | Fornecedor | Quantidade | Preço Unitário"); // Preço adicionado
-        System.out.println("---------------------------------------------------------------------");
-
+        System.out.println("ID | Produto | Quantidade | Disponibilidade");
         boolean encontrou = false;
 
         for (Estoque item : itensEstoque) {
             if (item.getProduto().getNome().toLowerCase().contains(nomeProduto.toLowerCase())) {
-                System.out.printf("%-6d | %-15s | %-15s | %-10d | R$ %.2f%n",
+                String disponibilidade = item.getQuantidade() > 0 ? "Disponivel" : "Indisponivel";
+                System.out.printf("%d | %s | %d | %s\n",
                         item.getProduto().getId(),
                         item.getProduto().getNome(),
-                        item.getProduto().getFornecedor().getNome(),
                         item.getQuantidade(),
-                        item.getProduto().getPreco()); // Preço do produto
+                        disponibilidade);
                 encontrou = true;
             }
         }
@@ -239,8 +269,6 @@ public class EstoqueService {
         if (!encontrou) {
             System.out.println("Nenhum item encontrado com esse nome.");
         }
-        System.out.println("---------------------------------------------------------------------");
-        System.out.println("Total de itens no estoque: " + itensEstoque.size());
     }
 
     private void consultarItemEstoquePorCodigo(Scanner scanner) {
@@ -249,24 +277,23 @@ public class EstoqueService {
         try {
             codigoProduto = Integer.parseInt(scanner.nextLine());
         } catch (NumberFormatException e) {
-            System.out.println("Entrada inválida para o código do produto. Operacao cancelada.");
+            System.out.println("Entrada invalida para o codigo do produto. Operacao cancelada.");
             return;
         }
 
         System.out.println("\n--- Lista de Itens no Estoque ---");
-        System.out.println("Codigo | Nome | Fornecedor | Quantidade | Preço Unitário"); // Preço adicionado
-        System.out.println("---------------------------------------------------------------------");
+        System.out.println("ID | Produto | Quantidade | Disponibilidade");
 
         boolean encontrou = false;
 
         for (Estoque item : itensEstoque) {
             if (item.getProduto().getId() == codigoProduto) {
-                System.out.printf("%-6d | %-15s | %-15s | %-10d | R$ %.2f%n",
+                String disponibilidade = item.getQuantidade() > 0 ? "Disponivel" : "Indisponivel";
+                System.out.printf("%d | %s | %d | %s\n",
                         item.getProduto().getId(),
                         item.getProduto().getNome(),
-                        item.getProduto().getFornecedor().getNome(),
                         item.getQuantidade(),
-                        item.getProduto().getPreco()); // Preço do produto
+                        disponibilidade);
                 encontrou = true;
             }
         }
@@ -274,54 +301,53 @@ public class EstoqueService {
         if (!encontrou) {
             System.out.println("Nenhum item encontrado com esse codigo.");
         }
-        System.out.println("---------------------------------------------------------------------");
-        System.out.println("Total de itens no estoque: " + itensEstoque.size());
     }
 
     public void consultarTodosItensEstoque() {
         if (itensEstoque.isEmpty()) {
-            System.out.println("Nenhum item encontrado no estoque.");
+            System.out.println("Nenhum item no estoque.");
             return;
         }
-
-        System.out.println("\n--- Lista de Itens no Estoque ---");
-        System.out.println("Codigo | Nome | Fornecedor | Quantidade | Preço Unitário"); // Preço adicionado
-        System.out.println("---------------------------------------------------------------------");
-
+        System.out.println("\n--- Estoque Atual ---");
+        System.out.println("ID | Produto | Quantidade | Disponibilidade");
         for (Estoque item : itensEstoque) {
-            System.out.printf("%-6d | %-15s | %-15s | %-10d | R$ %.2f%n",
+            String disponibilidade = item.getQuantidade() > 0 ? "Disponivel" : "Indisponivel";
+            System.out.printf("%d | %s | %d | %s\n",
                     item.getProduto().getId(),
                     item.getProduto().getNome(),
-                    item.getProduto().getFornecedor().getNome(),
                     item.getQuantidade(),
-                    item.getProduto().getPreco()); // Preço do produto
+                    disponibilidade);
         }
-
-        System.out.println("---------------------------------------------------------------------");
-        System.out.println("Total de itens no estoque: " + itensEstoque.size());
     }
 
-    // Auxiliar para PedidoService e outras verificações de estoque
-    public Estoque buscarItemEstoquePorProdutoId(int produtoId) {
+    // Auxiliar para PedidoService e outras verificacoes de estoque
+    public Estoque buscarItemEstoquePorProdutoId(int idProduto) {
         for (Estoque item : itensEstoque) {
-            if (item.getProduto().getId() == produtoId) {
+            if (item.getProduto().getId() == idProduto) {
                 return item;
             }
         }
         return null;
     }
-    
-    // Método para decrementar quantidade em estoque após um pedido
+
+    // Metodo auxiliar para verificar disponibilidade
+    public boolean produtoDisponivel(int idProduto) {
+        Estoque item = buscarItemEstoquePorProdutoId(idProduto);
+        return item != null && item.getQuantidade() > 0;
+    }
+
+    // Metodo para decrementar quantidade em estoque apos um pedido
     public boolean decrementarQuantidade(Produto produto, int quantidade) {
         Estoque item = buscarItemEstoquePorProdutoId(produto.getId());
         if (item != null && item.getQuantidade() >= quantidade) {
             item.setQuantidade(item.getQuantidade() - quantidade);
+            salvarEstoqueEmArquivo();
             return true;
         }
         return false;
     }
     
-    // Método para incrementar quantidade (por exemplo, em caso de cancelamento de pedido)
+    // Metodo para incrementar quantidade (por exemplo, em caso de cancelamento de pedido)
     public void incrementarQuantidade(Produto produto, int quantidade) {
         Estoque item = buscarItemEstoquePorProdutoId(produto.getId());
         if (item != null) {
@@ -329,5 +355,6 @@ public class EstoqueService {
         } else {
             itensEstoque.add(new Estoque(produto, quantidade));
         }
+        salvarEstoqueEmArquivo();
     }
 }
